@@ -1,114 +1,107 @@
 classdef KoopmanPredictor < handle
-    % KOOPMANPREDICTOR Data-driven EDMD pipeline for extracting Koopman operator.
-    % Uses Thin-Plate Spline RBFs alongside the original states.
-    
+    % KOOPMANPREDICTOR Data-driven Koopman operator via EDMD.
+    %
+    %   The nonlinear state x is "lifted" into a higher-dimensional feature
+    %   space using the original states plus Nrbf thin-plate-spline RBFs:
+    %
+    %       z = [x; phi(x)]     (lifted state, dimension n + Nrbf)
+    %
+    %   EDMD then fits linear matrices (Alift, Blift) such that
+    %
+    %       z_{k+1} ≈ Alift * z_k + Blift * u_k
+    %
+    %   and Clift recovers the original states:  x_k ≈ Clift * z_k.
+
     properties
-        model       % Instance of VanDerPolModel to gather data from
-        Nrbf        % Number of Radial Basis Functions
-        cent        % RBF centers
-        
-        Alift       % Lifted discrete A matrix
-        Blift       % Lifted discrete B matrix
-        Clift       % Lifted discrete C matrix (projects back to state space)
+        model       % VanDerPolModel instance
+        Nrbf        % Number of RBF features
+        cent        % RBF centers  [n x Nrbf]
+
+        Alift       % Lifted state-transition matrix  [(n+Nrbf) x (n+Nrbf)]
+        Blift       % Lifted input matrix             [(n+Nrbf) x m]
+        Clift       % Projection back to state space  [n x (n+Nrbf)]
     end
-    
+
     methods
         function obj = KoopmanPredictor(model, num_rbf)
             obj.model = model;
-            obj.Nrbf = num_rbf;
-            
-            % Centers are chosen randomly with uniform distribution on the unit box [-1, 1]^n
-            obj.cent = rand(model.n, obj.Nrbf) * 2 - 1;
+            obj.Nrbf  = num_rbf;
+            % Distribute RBF centers uniformly in the state-space box [-1, 1]^n
+            obj.cent  = rand(model.n, num_rbf) * 2 - 1;
         end
-        
+
         function train(obj, Nsim, Ntraj)
-            % Set random seed for reproducibility in training data
-            rng(42);
-            
-            disp('Starting data collection...');
-            % Random forcing in [-1, 1]
-            Ubig = 2 * rand(Nsim, Ntraj) - 1;
-            
-            % Random initial conditions in [-1, 1]
-            Xcurrent = 2 * rand(obj.model.n, Ntraj) - 1;
-            
-            % Preallocate for speed
-            total_samples = Nsim * Ntraj;
-            X = zeros(obj.model.n, total_samples);
-            Y = zeros(obj.model.n, total_samples);
-            U = zeros(obj.model.m, total_samples);
-            
-            idx = 1;
+            % Collect data, build lifted snapshot matrices, solve EDMD regression.
+            rng(42);    % Fix seed so results are reproducible
+
+            fprintf('Collecting %d training samples...\n', Nsim * Ntraj);
+            U       = 2 * rand(Nsim, Ntraj) - 1;         % random inputs  in [-1, 1]
+            Xcurrent = 2 * rand(obj.model.n, Ntraj) - 1; % random ICs     in [-1, 1]^n
+
+            % Pre-allocate snapshot matrices
+            X_snap = zeros(obj.model.n, Nsim * Ntraj);
+            Y_snap = zeros(obj.model.n, Nsim * Ntraj);
+            U_snap = zeros(obj.model.m, Nsim * Ntraj);
+
             for i = 1:Nsim
-                U_i = Ubig(i, :);
-                Xnext = obj.model.discreteStep(Xcurrent, U_i);
-                
-                range = idx:(idx + Ntraj - 1);
-                X(:, range) = Xcurrent;
-                Y(:, range) = Xnext;
-                U(:, range) = U_i;
-                
+                u_i   = U(i, :);
+                Xnext = obj.model.discreteStep(Xcurrent, u_i);
+
+                cols = (i-1)*Ntraj + (1:Ntraj);
+                X_snap(:, cols) = Xcurrent;
+                Y_snap(:, cols) = Xnext;
+                U_snap(:, cols) = u_i;
+
                 Xcurrent = Xnext;
-                idx = idx + Ntraj;
             end
-            disp('Data collection DONE.');
-            
-            disp('Starting LIFTING...');
-            Xlift = obj.lift(X);
-            Ylift = obj.lift(Y);
-            disp('Lifting DONE.');
-            
-            disp('Starting REGRESSION (EDMD)...');
-            W = [Ylift; X];
-            V = [Xlift; U];
-            
-            % Regularization to prevent ill-conditioning
-            VVt = V * V';
-            WVt = W * V';
-            % pseudo-inverse for robust least squares
-            M = WVt * pinv(VVt);
-            
-            % Extract Koopman operator and projection matrices
+            fprintf('Data collection done.\n');
+
+            fprintf('Lifting snapshots...\n');
+            Xlift = obj.lift(X_snap);
+            Ylift = obj.lift(Y_snap);
+
+            % EDMD least-squares:  solve  W ≈ M * V  for M
+            %   rows of W: [lifted next-state; current state]
+            %   rows of V: [lifted current-state; current input]
+            fprintf('Solving EDMD regression...\n');
+            W = [Ylift; X_snap];
+            V = [Xlift; U_snap];
+            M = W * V' * pinv(V * V');
+
             Nlift = obj.model.n + obj.Nrbf;
-            
-            obj.Alift = M(1:Nlift, 1:Nlift);
-            obj.Blift = M(1:Nlift, Nlift+1:end);
-            obj.Clift = M(Nlift+1:end, 1:Nlift);
-            disp('Regression DONE. Koopman Predictor is ready.');
+            obj.Alift = M(1:Nlift,        1:Nlift);
+            obj.Blift = M(1:Nlift,        Nlift+1:end);
+            obj.Clift = M(Nlift+1:end,    1:Nlift);
+            fprintf('Training complete. Koopman predictor is ready.\n');
         end
-        
-        function x_lift = lift(obj, x)
-            % lift: Transforms state x into lifted state space [x; phi(x)]
-            % x: [n x N] matrix
-            N = size(x, 2);
+
+        function z = lift(obj, x)
+            % Maps state x -> lifted feature vector z = [x; phi(x)].
+            % x : [n x N],   z : [(n + Nrbf) x N]
+            N   = size(x, 2);
             phi = zeros(obj.Nrbf, N);
-            
-            % Compute Thin-Plate Spline RBF for each center
+
             for i = 1:obj.Nrbf
-                c = obj.cent(:, i);
-                % Euclidean distance to center
-                % norm across columns using vectorized operations
-                r = sqrt(sum((x - c).^2, 1));
-                
-                % r^2 * log(r)
-                % To handle log(0) which returns -Inf, use r(idx) > 0 check
-                idx = r > 0;
-                phi(i, idx) = (r(idx).^2) .* log(r(idx));
+                % Euclidean distance from every sample to this RBF center
+                r = sqrt(sum((x - obj.cent(:,i)).^2, 1));   % [1 x N]
+
+                % Thin-plate-spline kernel:  r^2 * log(r)
+                % Evaluated only where r > 0 to avoid log(0) = -Inf
+                mask = r > 0;
+                phi(i, mask) = r(mask).^2 .* log(r(mask));
             end
-            
-            x_lift = [x; phi];
+
+            z = [x; phi];
         end
-        
-        function x_next = predict(obj, x_lift, u)
-            % predict: advances lifted state by one step using linear
-            % koopman matrices mapping.
-            x_next = obj.Alift * x_lift + obj.Blift * u;
+
+        function z_next = predict(obj, z, u)
+            % Advance the lifted state one step forward.
+            z_next = obj.Alift * z + obj.Blift * u;
         end
-        
-        function x_original = project(obj, x_lift)
-            % project: retrieves the original state variables from the
-            % lifted space via the projection matrix C
-            x_original = obj.Clift * x_lift;
+
+        function x = project(obj, z)
+            % Recover original state variables from the lifted state.
+            x = obj.Clift * z;
         end
     end
 end

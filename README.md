@@ -1,16 +1,16 @@
 <div align="center">
-  <h1>🚀 Koopman Operator Predictor: Van der Pol Oscillator</h1>
+  <h1>Koopman Operator Predictor: Van der Pol Oscillator</h1>
   <p>Data-driven global linearization of non-linear dynamic systems using Extended Dynamic Mode Decomposition (EDMD) in MATLAB.</p>
 </div>
 
 ![Dashboard Placeholder](docs/dashboard_placeholder.gif)
 
-## 📌 Project Overview
+## Project Overview
 This project investigates the applicability of **Koopman operator methodologies** to model and predict the behavior of non-linear, non-autonomous dynamic systems. By "lifting" the original state-space into a higher-dimensional observables space using a set of non-linear basis functions, we can construct a purely data-driven, approximately linear model of the underlying process.
 
-This repository focuses on applying this technique to a **Forced Van der Pol Oscillator**. The project features an elegant Object-Oriented pipeline and an intuitive interactive dashboard, eliminating the need for messy scripts or generic Simulink models. 
+This repository focuses on applying this technique to a **Forced Van der Pol Oscillator**. The project features an elegant Object-Oriented pipeline and an intuitive interactive dashboard.
 
-## 🧮 Theoretical Background
+## Theoretical Background
 
 ### 1. The Van der Pol Oscillator
 The system chosen for validation is the forced Van der Pol oscillator, a non-linear system exhibiting limit-cycle behavior.
@@ -27,13 +27,13 @@ The Koopman Operator translates the finite-dimensional, non-linear dynamics into
 1. **Lifting:** The state $x$ is lifted to a higher-dimensional space using the state itself and 100 thin-plate spline Radial Basis Functions (RBFs) $\phi(r) = r^2 \log(r)$. The centers are sampled uniformly from the unit box $[-1, 1]^2$.
 2. **Regression:** We collect $N$ transition data points $(x_k, u_k, x_{k+1})$ and solve a least-squares problem to discover the linear discrete-time matrices $A_{lift}$ and $B_{lift}$, defining the Koopman Predictor.
 
-## 🛠️ Repository Structure
+## Repository Structure
 - `VanDerPolModel.m`: Simulates real continuous behavior, handles RK4 discretization, and outputs analytical Jacobian local linearizations.
 - `KoopmanPredictor.m`: Handles the Thin-Plate RBF mapping and constructs the linear predictors through purely data-driven EDMD regression.
 - `VanDerPolDashboard.m`: Clean, interactive UI class that visualizes state trajectories and phase fields.
 - `main.m`: The primary entry point.
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Requirements
 - **MATLAB** (R2020a or later recommended).
@@ -42,8 +42,8 @@ The Koopman Operator translates the finite-dimensional, non-linear dynamics into
 ### Installation & Usage
 1. Clone the repository:
    ```bash
-   git clone https://github.com/vince/Koopman.git
-   cd Koopman
+   git clone https://github.com/cienzman/koopman-operator.git
+   cd koopman-operator
    ```
 2. Open MATLAB and navigate to the project directory.
 3. Run the main script to start data collection, training, and launch the interactive UI:
@@ -52,6 +52,6 @@ The Koopman Operator translates the finite-dimensional, non-linear dynamics into
    ```
 
 ### 🎮 The Dashboard
-The interactive UI allows users (and recruiters!) to interact dynamically with the Koopman model natively via MATLAB:
+The interactive UI allows users to interact dynamically with the Koopman model natively via MATLAB:
 - **Compare Trajectories:** Visualize the "True Physics", "Koopman global prediction", and simple "Local linearizations" around the origin or the current state.
 - **Adjust states:** Tweak initial values $x_1(0), x_2(0)$ and control actions $u$ using intuitive sliders and see predictions match up seamlessly in real-time.
