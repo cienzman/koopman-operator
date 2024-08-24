@@ -18,12 +18,14 @@ classdef RBFLifting < LiftingStrategy
         function fit(obj, Xdata)
             try
                 % Use K-means to place RBF centers exactly where data lives
-                [~, C] = kmeans(Xdata', obj.Nrbf, 'MaxIter', 100);
+                options = statset('MaxIter', 500);
+                [~, C] = kmeans(Xdata', obj.Nrbf, 'Options', options);
                 obj.cent = C';
             catch
                 % Fallback if Statistics toolbox isn't installed
-                disp('K-means unavailable. Using uniform random centers.');
-                obj.cent = 2 * rand(obj.n, obj.Nrbf) - 1;
+                disp('K-means unavailable. Randomly pick Nrbf data points from the actual training set to be centers.');
+                idx = randperm(size(Xdata, 2), obj.Nrbf);
+                obj.cent = Xdata(:, idx)
             end
         end
         

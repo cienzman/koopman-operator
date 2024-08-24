@@ -1,43 +1,40 @@
 <div align="center">
-  <h1>Koopman Operator Predictor: Van der Pol Oscillator</h1>
+  <h1>🚀 Koopman Operator Benchmarks</h1>
   <p>Data-driven global linearization of non-linear dynamic systems using Extended Dynamic Mode Decomposition (EDMD) in MATLAB.</p>
 </div>
 
 ![Dashboard Placeholder](docs/dashboard_placeholder.gif)
 
-## Project Overview
-This project investigates the applicability of **Koopman operator methodologies** to model and predict the behavior of non-linear, non-autonomous dynamic systems. By "lifting" the original state-space into a higher-dimensional observables space using a set of non-linear basis functions, we can construct a purely data-driven, approximately linear model of the underlying process.
+## 📌 Project Overview
+This repository investigates the applicability of **Koopman operator methodologies** to model and predict the behavior of non-linear, non-autonomous dynamic systems. By "lifting" the original state-space into a higher-dimensional observables space using non-linear basis functions, we construct an approximately linear model. 
 
-This repository focuses on applying this technique to a **Forced Van der Pol Oscillator**. The project features an elegant Object-Oriented pipeline and an intuitive interactive dashboard.
+This upgraded repository demonstrates this workflow across multiple dynamic benchmark systems (e.g., Van der Pol and Duffing oscillators), featuring a flexible strategy pattern for lifting, spectral analysis tools, and a standalone Koopman optimal control module (MPC).
 
-## Theoretical Background
+## 🧮 Physics Benchmarks
 
 ### 1. The Van der Pol Oscillator
-The system chosen for validation is the forced Van der Pol oscillator, a non-linear system exhibiting limit-cycle behavior.
-Its continuous-time dynamics are given by:
-
+A non-linear system exhibiting limit-cycle behavior.
 $$ \dot{x}_1 = 2x_2 $$
 $$ \dot{x}_2 = -0.8x_1 + 2x_2 - 10x_1^2 x_2 + u $$
 
-The continuous dynamics are discretized using a **4th-order Runge-Kutta method** with a sampling time $T_s = 0.01 \text{ s}$.
+### 2. The Duffing Oscillator
+A non-linear oscillator that demonstrates double-well potential and chaotic tendencies.
+$$ \dot{x}_1 = x_2 $$
+$$ \dot{x}_2 = - \delta x_2 - \alpha x_1 - \beta x_1^3 + u $$
 
-### 2. The Koopman Operator & EDMD
-The Koopman Operator translates the finite-dimensional, non-linear dynamics into an infinite-dimensional, linear space of "observables". We approximate this infinite-dimensional space using **Extended Dynamic Mode Decomposition (EDMD)**.
+Both continuous dynamics are exactly discretized using a **4th-order Runge-Kutta method** with a sampling time $T_s = 0.01 \text{ s}$. The underlying Koopman architecture operates generically on both.
 
-1. **Lifting:** The state $x$ is lifted to a higher-dimensional space using the state itself and 100 thin-plate spline Radial Basis Functions (RBFs) $\phi(r) = r^2 \log(r)$. The centers are sampled uniformly from the unit box $[-1, 1]^2$.
-2. **Regression:** We collect $N$ transition data points $(x_k, u_k, x_{k+1})$ and solve a least-squares problem to discover the linear discrete-time matrices $A_{lift}$ and $B_{lift}$, defining the Koopman Predictor.
+## 🛠️ Repository Organization
+- **`models/`**: Physical simulators inheriting from `DynamicModel.m`.
+- **`koopman/`**: Core algorithms. Features the `KoopmanPredictor.m` (EDMD) and the `LiftingStrategy.m` interface (enabling swapping between RBFs, Polynomials, NNs). Includes `KoopmanMPC.m` for fast convex control mappings.
+- **`analysis/`**: Validation scripts (`run_validation_suite.m`) and spectral eigenvalue visualizations (`analyze_spectrum.m`).
+- **`ui/`**: Non-expert friendly interactive UI (`KoopmanDashboard.m`).
 
-## Repository Structure
-- `VanDerPolModel.m`: Simulates real continuous behavior, handles RK4 discretization, and outputs analytical Jacobian local linearizations.
-- `KoopmanPredictor.m`: Handles the Thin-Plate RBF mapping and constructs the linear predictors through purely data-driven EDMD regression.
-- `VanDerPolDashboard.m`: Clean, interactive UI class that visualizes state trajectories and phase fields.
-- `main.m`: The primary entry point.
-
-## Getting Started
+## 🚀 Getting Started
 
 ### Requirements
 - **MATLAB** (R2020a or later recommended).
-- No external toolboxes (e.g., Simulink) are strictly required for the core modeling.
+- *Optimization Toolbox* (Required for K-Means in RBF tuning and `quadprog` in Koopman MPC).
 
 ### Installation & Usage
 1. Clone the repository:
@@ -52,6 +49,6 @@ The Koopman Operator translates the finite-dimensional, non-linear dynamics into
    ```
 
 ### 🎮 The Dashboard
-The interactive UI allows users to interact dynamically with the Koopman model natively via MATLAB:
-- **Compare Trajectories:** Visualize the "True Physics", "Koopman global prediction", and simple "Local linearizations" around the origin or the current state.
-- **Adjust states:** Tweak initial values $x_1(0), x_2(0)$ and control actions $u$ using intuitive sliders and see predictions match up seamlessly in real-time.
+The interactive UI allows users to dynamically swap between the Van der Pol and Duffing oscillators in real-time. It visualizes:
+- **True Physics** vs **Koopman global prediction** vs **Local analytical linearizations**.
+- Adjust initial values $x_1(0), x_2(0)$ and control actions $u$ using intuitive sliders.

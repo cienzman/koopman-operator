@@ -34,10 +34,16 @@ classdef KoopmanMPC < handle
             obj.Phi = zeros(Nlift * obj.Np, Nlift);
             obj.Gamma = zeros(Nlift * obj.Np, obj.Np); % scalar input m=1
             
+            A_power = eye(size(A)); % Initialize A^0
+            
             for k = 1:obj.Np
-                obj.Phi((k-1)*Nlift+1 : k*Nlift, :) = A^k;
-                for j = 1:k
-                    obj.Gamma((k-1)*Nlift+1 : k*Nlift, j) = A^(k-j) * B;
+                A_power = A_power * A; % Iteratively compute A^k
+                obj.Phi((k-1)*Nlift+1 : k*Nlift, :) = A_power;
+                
+                temp_A = eye(size(A));
+                for j = k:-1:1
+                    obj.Gamma((k-1)*Nlift+1 : k*Nlift, j) = temp_A * B;
+                    temp_A = temp_A * A; % Shift back through time
                 end
             end
             
@@ -59,8 +65,7 @@ classdef KoopmanMPC < handle
             % Reference in lifted space (assuming constant setpoint)
             Zref = repmat(obj.koop.lift(xref), obj.Np, 1);
             
-            % Linear cost term: f = 2 * Gamma' * Qbar * (Phi*z0 - Zref)
-            % (Dropping the factor of 2 because quadprog solves 0.5*x'Hx + f'x)
+            % Linear cost term: f = Gamma' * Qbar * (Phi*z0 - Zref)
             f = obj.Gamma' * obj.Qbar * (obj.Phi * z0 - Zref);
             
             lb = repmat(obj.umin, obj.Np, 1);

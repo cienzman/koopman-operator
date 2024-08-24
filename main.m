@@ -1,34 +1,21 @@
-% MAIN Script for Van der Pol Koopman Predictor
-% This script initializes the system, trains the Koopman Model using EDMD,
-% and opens the interactive dashboard.
+% MAIN Script for Koopman Predictor Benchmarks
+% Initializes the interactive multi-model dashboard
 
 clear variables;
 close all;
 clc;
 
+% Add all subfolders to path
+addpath(genpath(pwd));
+
 disp('========================================');
-disp('   Koopman Operator for Van der Pol     ');
+disp('      Koopman Operator Benchmarks       ');
 disp('========================================');
 
-% 1. Create Model
-deltaT = 0.01;
-vdp = VanDerPolModel(deltaT);
+disp('Initializing System and launching Dashboard...');
+disp('This might take a few seconds to train the baseline Predictors...');
 
-% 2. Setup Lifting Strategy & Initialize Predictor
-num_rbf = 100;
-lifting_strategy = RBFLifting(vdp.n, num_rbf);
-koop = KoopmanPredictor(vdp, lifting_strategy);
+% The dashboard now automatically trains Van der Pol and Duffing models
+app = KoopmanDashboard();
 
-% 3. Train Data
-% Nsim = 200, Ntraj = 1000 => 200,000 samples
-Nsim = 200;
-Ntraj = 1000;
-koop.train(Nsim, Ntraj);
-
-% 4. Launch Interactive Dashboard
-disp('Launching Dashboard...');
-app = VanDerPolDashboard(koop);
-
-disp('Dashboard is ready!');
-disp('- Try setting the Input Profile to "Koopman MPC"');
-disp('- Try moving the sliders to see the Valid/OOD Lamp change');
+disp('Dashboard is ready! Select different systems from the dropdown menu.');
