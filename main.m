@@ -15,7 +15,7 @@ disp('========================================');
 disp('Initializing System and launching Dashboard...');
 disp('This might take a few seconds to train the baseline Predictors...');
 
-% The dashboard now automatically trains Van der Pol and Duffing models
+% The dashboard automatically trains Van der Pol, Duffing, and Inverted Pendulum models
 app = KoopmanDashboard();
 
 disp('Dashboard is ready! Select different systems from the dropdown menu.');

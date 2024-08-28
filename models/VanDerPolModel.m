@@ -12,7 +12,7 @@ classdef VanDerPolModel < DynamicModel
             obj.m = 1;
         end
         
-        function dxdt = continuousDynamics(~, x, u)
+        function dxdt = continuousDynamics(obj, x, u)
             % continuousDynamics: evaluates x_dot = f(x, u)
             dxdt = zeros(2, size(x, 2));
             dxdt(1, :) = 2 * x(2, :);
