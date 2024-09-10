@@ -11,7 +11,29 @@ baseline_strategy = RBFLifting(vdp.n, 100);
 koop = KoopmanPredictor(vdp, baseline_strategy);
 koop.train(200, 1000); % Baseline 200,000 samples
 
-%% 2. Hyperparameter Ablation (Nrbf vs RMSE)
+%% 2. Physics-Informed Proportional Error Bounds (Origin Equilibrium Test)
+disp('Testing Physics-Informed Koopman at the Origin...');
+pi_strategy = PIRBFLifting(vdp.n, 100);
+koop_pi = KoopmanPredictor(vdp, pi_strategy);
+koop_pi.train(200, 1000);
+
+% Test prediction at exactly the origin
+x0_origin = [0; 0];
+u0 = 0;
+
+z_std = koop.lift(x0_origin);
+x_next_std = koop.project(koop.predict(z_std, u0));
+
+z_pi = koop_pi.lift(x0_origin);
+x_next_pi = koop_pi.project(koop_pi.predict(z_pi, u0));
+
+fprintf('--- Equilibrium Test (x=0, u=0) ---\n');
+fprintf('True Nonlinear model:      [%f; %f]\n', 0, 0);
+fprintf('Standard Koopman Predictor:[%f; %f] (Error: %e)\n', x_next_std(1), x_next_std(2), norm(x_next_std));
+fprintf('Physics-Informed Koopman:  [%f; %f] (Error: %e)\n', x_next_pi(1), x_next_pi(2), norm(x_next_pi));
+fprintf('-----------------------------------\n\n');
+
+%% 3. Hyperparameter Ablation (Nrbf vs RMSE)
 disp('Running RBF Ablation Study...');
 Nrbf_list = [10, 50, 100, 200];
 rmse_results = zeros(size(Nrbf_list));
@@ -31,13 +53,13 @@ figure; plot(Nrbf_list, rmse_results, '-o', 'LineWidth', 2);
 title('Ablation: Number of RBFs vs. Prediction Error');
 xlabel('Number of RBFs (N_{rbf})'); ylabel('Validation RMSE');
 
-%% 3. Robustness to Measurement Noise in Training
+%% 4. Robustness to Measurement Noise in Training
 disp('Testing Robustness to Training Noise...');
 % (Simulate adding 5% Gaussian noise to X_snap and Y_snap during training)
 % A robust operator requires regularization (e.g., Tikhonov/Ridge regression
 % in the pinv step: pinv(V*V' + lambda*I)). 
 
-%% 4. Generalization: Out of Distribution (OOD) & Time-Varying Input
+%% 5. Generalization: Out of Distribution (OOD) & Time-Varying Input
 disp('Testing Time-Varying Input Tracking...');
 Nsim = 500;
 U_sin = sin(3 * (0:Nsim-1) * vdp.deltaT); % Sine wave input
