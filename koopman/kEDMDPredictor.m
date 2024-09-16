@@ -19,6 +19,7 @@ classdef kEDMDPredictor < handle
         
         kernel_type % 'wendland' or 'tps'
         kernel_radius % Scaling radius for the Wendland kernel
+        use_pi_constraint % boolean, defaults to true
     end
     
     methods
@@ -32,6 +33,7 @@ classdef kEDMDPredictor < handle
                 obj.kernel_type = 'tps'; % Defaulting to Thin-Plate Splines for better global support
             end
             obj.kernel_radius = 2.0; % Default Wendland support radius
+            obj.use_pi_constraint = true;
         end
         
         function train(obj)
@@ -66,7 +68,7 @@ classdef kEDMDPredictor < handle
                     X_next_local(:, j) = obj.model.discreteStep(X_local(:, j), U_local(:, j));
                 end
                 
-                if i == 1
+                if i == 1 && obj.use_pi_constraint
                     % Physics-Informed at origin: g0(0) = 0
                     obj.g0_tilde(:, i) = 0;
                     
